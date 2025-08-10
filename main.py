@@ -14,16 +14,15 @@ Author:
     Di Nguyen
 """
 
-import torch.nn as nn
-from torch.nn.functional import relu
 import os
 import torch
 import random
-import numpy as np
 from tqdm import tqdm
+import torch.nn as nn
 import idx2numpy as i2n
 import matplotlib.pyplot as plt
 from torch.utils.data import Dataset
+from torch.nn.functional import relu
 from torchvision.transforms import v2
 from torch.utils.data import DataLoader
 
@@ -291,7 +290,7 @@ def train(model: CNN, train_loader: DataLoader, val_loader: DataLoader, epochs: 
         scheduler.step()
 
         torch.save(model, os.path.join(
-            f'{CURR_DIR}/models', f'mnist-classifier-{eval_accuracy}-{train_accuracy}-.pt'
+            f'{CURR_DIR}/models', f'mnist-classifier-{eval_accuracy}-{train_accuracy}.pt'
         ))
 
 
