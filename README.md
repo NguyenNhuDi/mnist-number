@@ -18,6 +18,7 @@ Features:
 
 Directory Structure:
 --------------------
+```
 project/
 ├── dataset/
 │   ├── train-images.idx3-ubyte
@@ -28,6 +29,7 @@ project/
 ├── main.py
 ├── download.py
 └── requirements.txt # torch not included
+```
 
 Dependencies:
 -------------
