@@ -3,6 +3,7 @@ import cv2
 import torch
 import numpy as np
 from main import CNN
+from main import BasicBlock
 from glob import glob
 
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'

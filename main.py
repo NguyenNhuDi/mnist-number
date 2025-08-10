@@ -150,8 +150,8 @@ class MnistDataset(Dataset):
         # Apply augmentations if training
         if self.train:
             transforms = v2.Compose([
-                v2.RandomHorizontalFlip(p=0.5),
-                v2.RandomVerticalFlip(p=0.5),
+                v2.RandomRotation(degrees=10),
+                v2.RandomAffine(degrees=0, translate=(0.5, 0.5)),
                 v2.RandomInvert(p=0.5)
             ])
             image = transforms(image)
@@ -159,34 +159,68 @@ class MnistDataset(Dataset):
         return image, label
 
 
-# -------------------------------------------------------------------
-# Class: CNN
-# -------------------------------------------------------------------
-class CNN(nn.Module):
+class BasicBlock(nn.Module):
     """
-    Simple convolutional neural network for MNIST classification.
-    Architecture:
-        Conv2d(1→32) → ReLU → MaxPool
-        Conv2d(32→64) → ReLU → MaxPool
-        Flatten → Linear(64*7*7 → 128) → ReLU → Linear(128→10)
+    Basic Residual Block with two conv layers and skip connection.
     """
-    def __init__(self):
-        super(CNN, self).__init__()
-        self.conv1 = nn.Conv2d(1, 32, kernel_size=3, padding=1)
-        self.pool1 = nn.MaxPool2d(2, 2)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
-        self.pool2 = nn.MaxPool2d(2, 2)
-        self.fc1 = nn.Linear(64 * 7 * 7, 128)
-        self.fc2 = nn.Linear(128, 10)
+    def __init__(self, in_channels, out_channels, stride=1):
+        super(BasicBlock, self).__init__()
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3,
+                               stride=stride, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(out_channels)
+
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3,
+                               stride=1, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(out_channels)
+
+        # Shortcut to match dimensions if needed
+        self.shortcut = nn.Sequential()
+        if stride != 1 or in_channels != out_channels:
+            self.shortcut = nn.Sequential(
+                nn.Conv2d(in_channels, out_channels,
+                          kernel_size=1, stride=stride, bias=False),
+                nn.BatchNorm2d(out_channels)
+            )
 
     def forward(self, x):
-        """Forward pass producing raw logits."""
-        x = self.pool1(relu(self.conv1(x)))
-        x = self.pool2(relu(self.conv2(x)))
-        x = torch.flatten(x, 1)
-        x = relu(self.fc1(x))
-        x = self.fc2(x)
-        return x
+        out = relu(self.bn1(self.conv1(x)))
+        out = self.bn2(self.conv2(out))
+        out += self.shortcut(x)
+        out = relu(out)
+        return out
+
+class CNN(nn.Module):
+    def __init__(self, num_classes=10):
+        super(CNN, self).__init__()
+        self.in_channels = 64
+
+        self.conv1 = nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(64)
+
+        self.layer1 = self._make_layer(64, num_blocks=2, stride=1)
+        self.layer2 = self._make_layer(128, num_blocks=2, stride=2)
+        self.layer3 = self._make_layer(256, num_blocks=2, stride=2)
+
+        self.avg_pool = nn.AdaptiveAvgPool2d((1, 1))
+        self.fc = nn.Linear(256, num_classes)
+
+    def _make_layer(self, out_channels, num_blocks, stride):
+        strides = [stride] + [1] * (num_blocks - 1)  
+        layers = []
+        for s in strides:
+            layers.append(BasicBlock(self.in_channels, out_channels, s))
+            self.in_channels = out_channels
+        return nn.Sequential(*layers)
+
+    def forward(self, x):
+        out = relu(self.bn1(self.conv1(x)))
+        out = self.layer1(out)
+        out = self.layer2(out)
+        out = self.layer3(out)
+        out = self.avg_pool(out)
+        out = torch.flatten(out, 1)
+        out = self.fc(out)
+        return out
 
 
 # -------------------------------------------------------------------
@@ -319,4 +353,4 @@ if __name__ == '__main__':
     show_images(images, f'{CURR_DIR}/random_100.png')
 
     print("--- Begin Training ---")
-    train(model=model, train_loader=train_loader, val_loader=val_loader, epochs=50)
+    train(model=model, train_loader=train_loader, val_loader=val_loader, epochs=200)
