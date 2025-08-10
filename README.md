@@ -20,7 +20,7 @@ Directory Structure:
 --------------------
 ```
 project/
-├── dataset/
+├── dataset/         # Created automatically if download.py is ran
 │   ├── train-images.idx3-ubyte
 │   ├── train-labels.idx1-ubyte
 │   ├── t10k-images.idx3-ubyte
